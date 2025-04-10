@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Attendance Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    #header{
+      background: #1e1e1e;
+      width: 100%;
+      justify-items: center;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 10px;
+    }
+    h1 {
+      color: #00ffcc;
+    }
+    input, button, select {
+      padding: 10px;
+      margin: 5px;
+      font-size: 14px;
+      border: none;
+      border-radius: 5px;
+    }
+    input {
+      width: 150px;
+    }
+    button {
+      background: #00ffcc;
+      color: #000;
+      cursor: pointer;
+    }
+    select {
+      background: #1e1e1e;
+      color: #00ffcc;
+    }
+    .subject {
+      background: #1e1e1e;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 10px;
+      width: 320px;
+      text-align: left;
+    }
+    .output {
+      margin-top: 20px;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      width: 320px;
+    }
+
+    #canva-box{
+      margin-top: 5%;
+    }
+    #barChart{
+      width: 1330px;
+      height: 1080px;
+    }
+
+    @media (max-width: 768px) {
+      #barChart{
+        min-height: 100%;
+        width: 300px;
+      }
+    }
+    
+  </style>
+</head>
+<body>
+
+  <div class="header" id="header">
+    <h1>Attendance Tracker</h1>
+  </div>
+
+  <select id="mode" onchange="changeMode()">
+    <option value="subject">Subject-wise Mode</option>
+    <option value="overall">Overall Mode</option>
+  </select>
+
+  <div id="subjectInputs">
+    <select id="subjectDropdown" onchange="toggleSubjectInput()">
+      <option value="">-- Select Subject --</option>
+      <option value="Python programming">Python programming</option>
+      <option value="Python and clean coding">Python and clean coding</option>
+      <option value="Problem-solving techniques">Problem-solving techniques</option>
+      <option value="Digital logic design">Digital logic design</option>
+      <option value="Professional proficiency">Professional proficiency</option>
+      <option value="Business communication">Business communication</option>
+      <option value="Environmental studies">Environmental studies</option>
+      <option value="Computer organisation architecture">Computer organisation architecture</option>
+      <option value="Database management system">Database management system</option>
+      <option value="Data structure">Data structure</option>
+      <option value="Basic maths">Basic maths</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <input type="text" id="subjectName" placeholder="Enter Subject" style="display: none;">
+    <input type="number" id="totalClasses" placeholder="Total Classes">
+    <input type="number" id="attendedClasses" placeholder="Attended">
+    <button onclick="addSubject()">Add Subject</button>
+  </div>
+
+  <div id="overallInputs" style="display: none;">
+    <input type="number" id="overallTotal" placeholder="Total Classes">
+    <input type="number" id="overallAttended" placeholder="Attended">
+    <button onclick="saveOverall()">Save Overall</button>
+  </div>
+
+  <button onclick="resetAll()">Reset All</button>
+
+  <div id="subjectsContainer"></div>
+  <div class="output" id="overallResult"></div>
+  <div id="canva-box">
+    <canvas id="barChart" width="360" height="250"></canvas>
+  </div>
+  
+
+  <script>
+    let subjects = JSON.parse(localStorage.getItem("subjects")) || [];
+    let overall = JSON.parse(localStorage.getItem("overall")) || { total: 0, attended: 0 };
+
+    function saveSubjects() {
+      localStorage.setItem("subjects", JSON.stringify(subjects));
+    }
+
+    function toggleSubjectInput() {
+      const dropdown = document.getElementById("subjectDropdown");
+      const manualInput = document.getElementById("subjectName");
+      manualInput.style.display = dropdown.value === "Other" ? "inline-block" : "none";
+    }
+
+    function addSubject() {
+      let name = document.getElementById("subjectDropdown").value;
+      if (name === "Other") {
+        name = document.getElementById("subjectName").value.trim();
+      }
+
+      const total = parseInt(document.getElementById("totalClasses").value);
+      const attended = parseInt(document.getElementById("attendedClasses").value);
+
+      if (!name || isNaN(total) || isNaN(attended) || total <= 0 || attended < 0 || attended > total) {
+        alert("Please enter valid details.");
+        return;
+      }
+
+      subjects.push({ name, total, attended });
+      saveSubjects();
+      displaySubjects();
+      clearInputs();
+    }
+
+    function clearInputs() {
+      document.getElementById("subjectDropdown").value = '';
+      document.getElementById("subjectName").value = '';
+      document.getElementById("subjectName").style.display = 'none';
+      document.getElementById("totalClasses").value = '';
+      document.getElementById("attendedClasses").value = '';
+    }
+
+    function deleteSubject(index) {
+      subjects.splice(index, 1);
+      saveSubjects();
+      displaySubjects();
+    }
+
+    function resetAll() {
+      if (confirm("Are you sure you want to reset all data?")) {
+        subjects = [];
+        overall = { total: 0, attended: 0 };
+        localStorage.removeItem("subjects");
+        localStorage.removeItem("overall");
+        displaySubjects();
+      }
+    }
+
+    function saveOverall() {
+      const total = parseInt(document.getElementById("overallTotal").value);
+      const attended = parseInt(document.getElementById("overallAttended").value);
+
+      if (isNaN(total) || isNaN(attended) || total <= 0 || attended < 0 || attended > total) {
+        alert("Please enter valid overall values.");
+        return;
+      }
+
+      overall = { total, attended };
+      localStorage.setItem("overall", JSON.stringify(overall));
+      displaySubjects();
+    }
+
+    function changeMode() {
+      const mode = document.getElementById("mode").value;
+      document.getElementById("subjectInputs").style.display = mode === "subject" ? "block" : "none";
+      document.getElementById("overallInputs").style.display = mode === "overall" ? "block" : "none";
+      displaySubjects();
+    }
+
+    function displaySubjects() {
+      const container = document.getElementById("subjectsContainer");
+      const mode = document.getElementById("mode").value;
+      container.innerHTML = "";
+      const resultDiv = document.getElementById("overallResult");
+      const barCanvas = document.getElementById("barChart");
+      const barCtx = barCanvas.getContext("2d");
+
+      if (window.barChartInstance) window.barChartInstance.destroy();
+
+      if (mode === "subject") {
+        if (subjects.length === 0) {
+          resultDiv.innerHTML = "No data yet.";
+          return;
+        }
+
+        let totalAll = 0, attendedAll = 0;
+        const labels = [], percentages = [];
+
+        subjects.forEach((subj, index) => {
+          const percent = ((subj.attended / subj.total) * 100).toFixed(2);
+          totalAll += subj.total;
+          attendedAll += subj.attended;
+          labels.push(subj.name);
+          percentages.push(percent);
+
+          let info = `<strong>${subj.name}</strong><br>`;
+          info += `Attendance: ${percent}%<br>`;
+
+          if (percent >= 75) {
+            const maxBunk = Math.floor((subj.attended - 0.75 * subj.total) / 0.75);
+            info += `Can miss <strong>${maxBunk}</strong> more classes.<br>`;
+          } else {
+            const x = Math.ceil((0.75 * subj.total - subj.attended) / 0.25);
+            info += `Must attend <strong>${x}</strong> more classes.<br>`;
+          }
+
+          info += `<button onclick="deleteSubject(${index})">Delete</button>`;
+
+          const div = document.createElement("div");
+          div.className = "subject";
+          div.innerHTML = info;
+
+          const canvas = document.createElement("canvas");
+          canvas.id = `pie-${index}`;
+          canvas.width = 280;
+          canvas.height = 180;
+          div.appendChild(canvas);
+          container.appendChild(div);
+
+          setTimeout(() => {
+            new Chart(canvas, {
+              type: 'pie',
+              data: {
+                labels: ['Attended', 'Missed'],
+                datasets: [{
+                  data: [subj.attended, subj.total - subj.attended],
+                  backgroundColor: ['#00ffcc', '#ff0066']
+                }]
+              },
+              options: {
+                plugins: {
+                  legend: {
+                    labels: {
+                      color: "#f5f5f5"
+                    }
+                  }
+                }
+              }
+            });
+          }, 0);
+        });
+
+        displayOverall(totalAll, attendedAll);
+
+        window.barChartInstance = new Chart(barCtx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Attendance %',
+              data: percentages,
+              backgroundColor: '#00ffcc'
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                  color: "#f5f5f5"
+                }
+              },
+              x: {
+                ticks: {
+                  color: "#f5f5f5"
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: "#f5f5f5"
+                }
+              }
+            }
+          }
+        });
+
+      } else {
+        const { total, attended } = overall;
+
+        if (total === 0) {
+          resultDiv.innerHTML = "No overall data yet.";
+          return;
+        }
+
+        const percent = ((attended / total) * 100).toFixed(2);
+        let message = `<strong>Overall Attendance:</strong> ${percent}%<br>`;
+
+        if (percent >= 75) {
+          const maxBunk = Math.floor((attended - 0.75 * total) / 0.75);
+          message += `You can miss <strong>${maxBunk}</strong> more classes.`;
+        } else {
+          const x = Math.ceil((0.75 * total - attended) / 0.25);
+          message += `You need to attend <strong>${x}</strong> more classes.`;
+        }
+
+        resultDiv.innerHTML = message;
+      }
+    }
+
+    function displayOverall(total, attended) {
+      const resultDiv = document.getElementById("overallResult");
+      if (total === 0) {
+        resultDiv.innerHTML = "No data yet.";
+        return;
+      }
+
+      const overallPercent = ((attended / total) * 100).toFixed(2);
+      resultDiv.innerHTML = `<strong>Overall Attendance:</strong> ${overallPercent}%`;
+    }
+
+    // Load on page
+    changeMode();
+  </script>
+</body>
+</html>
